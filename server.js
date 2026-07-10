@@ -11,6 +11,7 @@ const paymentRoutes = require('./routes/paymentRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const addressRoutes = require('./routes/addressRoutes');
 const searchRoutes = require('./routes/searchRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const db = require('./config/db');
 
@@ -39,6 +40,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/address', addressRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 console.log('Guest routes mounted');
 
