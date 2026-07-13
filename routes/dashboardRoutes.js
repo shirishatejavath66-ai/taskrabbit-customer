@@ -29,4 +29,9 @@ router.get(
     '/summary/:customerId',
     dashboardController.getDashboardSummary
 );
+//Get Active bookings
+router.get(
+    '/active-tasks/:customerId',
+    dashboardController.getActiveTasks
+);
 module.exports = router;

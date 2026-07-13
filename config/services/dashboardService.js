@@ -107,11 +107,33 @@ const getDashboardSummary = async (customerId) => {
     };
 
 };
+//Get Active tasks
+const getActiveTasks = async (customerId) => {
+
+    const [rows] = await db.query(
+        `SELECT
+            b.booking_id,
+            s.service_name,
+            b.booking_date,
+            b.booking_time,
+            b.status
+        FROM bookings b
+        INNER JOIN services s
+        ON b.service_id = s.service_id
+        WHERE b.customer_id = ?
+        AND b.status IN ('accepted', 'pending')
+        ORDER BY b.booking_date ASC`,
+        [customerId]
+    );
+
+    return rows;
+};
 
 module.exports = {
     getCategories,
     getPopularServices,
     getUpcomingBookings,
     getRecentBookings,
-    getDashboardSummary
+    getDashboardSummary,
+    getActiveTasks
 };

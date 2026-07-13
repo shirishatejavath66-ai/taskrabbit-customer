@@ -128,3 +128,28 @@ exports.getDashboardSummary = async (req, res) => {
     }
 
 };
+// Get Active Tasks
+exports.getActiveTasks = async (req, res) => {
+
+    try {
+
+        const { customerId } = req.params;
+
+        const tasks = await dashboardService.getActiveTasks(customerId);
+
+        res.status(200).json({
+            success: true,
+            count: tasks.length,
+            data: tasks
+        });
+
+    } catch (error) {
+
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+
+    }
+
+};

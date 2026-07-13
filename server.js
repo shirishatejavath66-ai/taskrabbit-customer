@@ -42,6 +42,7 @@ app.use('/api/address', addressRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
+
 console.log('Guest routes mounted');
 
 // TEST ROUTE
