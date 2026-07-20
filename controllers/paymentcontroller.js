@@ -1,4 +1,4 @@
-const paymentService = require('../config/services/paymentService');
+const paymentService = require('../services/paymentService');
 console.log('Payment Service:', paymentService);
 //Create Payment//
 const createPayment = async (req, res) => {

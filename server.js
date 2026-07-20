@@ -1,5 +1,6 @@
 const cors = require('cors');
 const express = require('express');
+const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 
 const customerRoutes = require('./routes/customerRoutes');
@@ -23,6 +24,7 @@ const app = express();
 
 // MIDDLEWARE
 app.use(express.json());
+app.use(cookieParser());
 
 app.use(cors({
   origin: 'http://localhost:3000'

@@ -1,5 +1,5 @@
 const dashboardService =
-require('../config/services/dashboardService');
+require('../services/dashboardService');
 
 // Get Categories
 exports.getCategories = async (req, res) => {

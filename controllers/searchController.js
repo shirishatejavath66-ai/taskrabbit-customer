@@ -1,5 +1,4 @@
-const searchService =
-require('../config/services/searchService');
+const searchService = require('../services/searchService');
 
 // Search Services
 exports.searchServices = async (req, res) => {

@@ -1,4 +1,4 @@
-const addressService = require('../config/services/addressService');
+const addressService = require('../services/addressService');
 
 // Add Address
 exports.addAddress = async (req, res) => {

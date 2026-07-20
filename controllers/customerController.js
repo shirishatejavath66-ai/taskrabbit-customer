@@ -96,17 +96,59 @@ exports.loginCustomer = async (req, res) => {
       });
     }
 
-    const token = jwt.sign(
-      { id: customer.customer_id, email: customer.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
 
-    res.status(200).json({
-      success: true,
-      message: 'Login successful',
-      token
-    });
+    // ================= GENERATE ACCESS TOKEN =================
+
+const accessToken = jwt.sign(
+{
+    id: customer.customer_id,
+    email: customer.email,
+
+    role: "customer",
+
+    tokenVersion: customer.token_version
+},
+
+  process.env.JWT_SECRET,
+  { expiresIn: '15m' }   // Access Token
+);
+
+// ================= GENERATE REFRESH TOKEN =================
+
+const refreshToken = jwt.sign(
+{
+    id: customer.customer_id,
+
+    role: "customer",
+
+    tokenVersion: customer.token_version
+},
+
+  process.env.JWT_SECRET,
+  { expiresIn: '30d' }   // Refresh Token
+);
+// ================= SAVE REFRESH TOKEN =================
+
+await db.query(
+  'UPDATE customers SET refresh_token = ? WHERE customer_id = ?',
+  [refreshToken, customer.customer_id]
+);
+    res
+  .status(200)
+  .cookie("accessToken", accessToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None"
+  })
+  .cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None"
+  })
+  .json({
+    success: true,
+    message: "Login successful"
+  });
 
   } catch (error) {
     console.error(error);
@@ -115,6 +157,107 @@ exports.loginCustomer = async (req, res) => {
       message: 'Server error'
     });
   }
+};
+//===================== Refresh Token ===================
+exports.refreshToken = async (req, res) => {
+
+    try {
+
+        // Step 1: Read Refresh Token from Cookie
+        const refreshToken = req.cookies.refreshToken;
+
+        // Step 2: Check if Refresh Token exists
+        if (!refreshToken) {
+            return res.status(401).json({
+                success: false,
+                message: "Refresh token not found"
+            });
+        }
+        // Step 3: Verify JWT
+        const decoded = jwt.verify(
+    refreshToken,
+    process.env.JWT_SECRET
+);
+// Step 4: Get customer from database
+    const [customers] = await db.query(
+        `SELECT * FROM customers WHERE customer_id = ?`,
+        [decoded.id]
+    );
+
+   
+    if (customers.length === 0) {
+        return res.status(404).json({
+            success: false,
+            message: "Customer not found"
+        });
+    }
+
+    const customer = customers[0];
+    if (customer.refresh_token !== refreshToken) {
+    return res.status(401).json({
+        success: false,
+        message: "Invalid refresh token"
+    });
+}
+
+
+// Compare Refresh Token
+if (customer.refresh_token !== refreshToken) {
+    return res.status(401).json({
+        success: false,
+        message: "Invalid refresh token"
+    });
+}
+// Compare Token Version
+if (decoded.tokenVersion !== customer.token_version) {
+    return res.status(401).json({
+        success: false,
+        message: "Token has been invalidated. Please login again."
+    });
+}
+
+
+//Generate new access token
+const newAccessToken = jwt.sign(
+    {
+        id: customer.customer_id,
+        email: customer.email,
+        role: "customer",
+        tokenVersion: customer.token_version
+    },
+    process.env.JWT_SECRET,
+    {
+        expiresIn: "15m"
+    }
+);
+//Cookie option
+const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None"
+};
+
+res.cookie("accessToken", newAccessToken, cookieOptions);
+//success response
+return res.status(200).json({
+    success: true,
+    message: "Access token refreshed successfully"
+});
+
+
+        // Next step will come here...
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            success: false,
+            message: "Server error"
+        });
+
+    }
+
 };
 
 
@@ -359,7 +502,34 @@ exports.updateProfile = async (req, res) => {
 exports.logoutCustomer = async (req, res) => {
 
   try {
+// Step 1: Get logged-in customer ID
+    const customerId = req.user.id;
 
+    // Step 2: Increment token_version
+await db.query(
+    `UPDATE customers
+     SET token_version = token_version + 1
+     WHERE customer_id = ?`,
+    [customerId]
+);
+// Step 3: Clear Refresh Token from database
+    await db.query(
+      `UPDATE customers
+       SET refresh_token = NULL
+       WHERE customer_id = ?`,
+      [customerId]
+    );
+    // Clear cookies
+const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None"
+};
+
+res
+    .clearCookie("accessToken", cookieOptions)
+    .clearCookie("refreshToken", cookieOptions);
+// We'll add the cookie clearing code here next
     res.status(200).json({
       success: true,
       message: 'Logout successful'

@@ -1,33 +1,37 @@
 const jwt = require('jsonwebtoken');
+const db = require('../config/db');
 
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
 
     try {
 
-        // GET AUTH HEADER
+        // ================= GET TOKEN =================
 
-        const authHeader = req.headers.authorization;
+// First, try to read the token from the cookie.
+// If it's not there, fall back to the Authorization header.
 
-        console.log("AUTH HEADER:", authHeader);
+const authHeader = req.headers.authorization;
 
-        // CHECK HEADER
+const token =
+    req.cookies.accessToken ||
+    (authHeader && authHeader.split(" ")[1]);
 
-        if (!authHeader) {
 
-            return res.status(401).json({
-                success: false,
-                message: "Token missing"
-            });
+// ================= CHECK TOKEN =================
 
-        }
+if (!token) {
 
-        // EXTRACT TOKEN
+    return res.status(401).json({
+        success: false,
+        message: "Token missing"
+    });
 
-        const token = authHeader.split(' ')[1];
+}
 
-        console.log("TOKEN:", token);
-
-        // VERIFY TOKEN
+        // ================= VERIFY JWT =================
+        // Verify the JWT received from the client.
+        // If the token is invalid or expired, jwt.verify()
+        // throws an error and the request is rejected.
 
         const decoded = jwt.verify(
             token,
@@ -36,9 +40,59 @@ const verifyToken = (req, res, next) => {
 
         console.log("DECODED:", decoded);
 
-        // STORE USER DATA
+        // ================= HYDRATE USER =================
+        // Fetch the latest customer details from the database
+        // using the customer ID present in the JWT.
 
-        req.user = decoded;
+        const [rows] = await db.query(
+            'SELECT * FROM customers WHERE customer_id = ?',
+            [decoded.id]
+        );
+
+        // ================= CHECK CUSTOMER EXISTS =================
+        // If the customer no longer exists in the database,
+        // reject the request.
+
+        if (rows.length === 0) {
+
+            return res.status(401).json({
+                success: false,
+                message: "Customer not found"
+            });
+
+        }
+
+        const customer = rows[0];
+
+        // ================= DEVELOPMENT LOG =================
+        // Used only for testing Hydrate User.
+        // Remove before production if not required.
+
+        console.log("HYDRATED USER:", customer);
+
+        // ================= TOKEN VERSION VALIDATION =================
+        // Compare the token version stored in the JWT
+        // with the latest token version in the database.
+        // If they don't match, the token is no longer valid.
+
+        if (decoded.tokenVersion !== customer.token_version) {
+
+            return res.status(401).json({
+                success: false,
+                message: "Token expired. Please login again."
+            });
+
+        }
+
+        // ================= STORE LATEST USER =================
+// Assign the latest customer object to req.user
+// and include the role from the JWT.
+
+        req.user = {
+    ...customer,
+    role: decoded.role
+};
+        // ================= CONTINUE REQUEST =================
 
         next();
 
